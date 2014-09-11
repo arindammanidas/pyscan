@@ -9,13 +9,16 @@ import net.sourceforge.zbar.Image;
 import net.sourceforge.zbar.ImageScanner;
 import net.sourceforge.zbar.Symbol;
 import net.sourceforge.zbar.SymbolSet;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.hardware.Camera;
-import android.hardware.Camera.AutoFocusCallback;
 import android.hardware.Camera.PreviewCallback;
 import android.hardware.Camera.Size;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -23,6 +26,8 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.text.Spannable;
 import android.text.SpannableString;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
 import android.text.style.RelativeSizeSpan;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -105,16 +110,16 @@ public class MainActivity extends ActionBarActivity {
      	    });
      	}
      	     			
-        autoFocusHandler = new Handler();
-        mCamera = getCameraInstance();
+        //autoFocusHandler = new Handler();
+        //mCamera = getCameraInstance();
 
         /* Instance barcode scanner */
         scanner = new ImageScanner();
         scanner.setConfig(0, Config.X_DENSITY, 3);
         scanner.setConfig(0, Config.Y_DENSITY, 3);
 
-        mPreview = new CameraPreview(this, mCamera, previewCb, autoFocusCB);
-        preview = (FrameLayout)findViewById(R.id.cameraPreview);
+        //mPreview = new CameraPreview(this, mCamera, previewCb, autoFocusCB);
+        //preview = (FrameLayout)findViewById(R.id.cameraPreview);
         //preview.addView(mPreview);
 
         scanText = (TextView)findViewById(R.id.scanText);
@@ -129,9 +134,15 @@ public class MainActivity extends ActionBarActivity {
         buttonText.setSpan(new TypefaceSpan(this, "bebas_neue.otf"), 0, buttonText.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         scanText.setText(buttonText);
         
+        //scanText.setVisibility(View.INVISIBLE);
+        
         scanButton.setOnClickListener(new OnClickListener() {
                 public void onClick(View v) {
                 	if (flag == 0){
+                		autoFocusHandler = new Handler();
+                		mCamera = getCameraInstance();
+        	        	mPreview = new CameraPreview(MainActivity.this, mCamera, previewCb, autoFocusCB);
+        	            preview = (FrameLayout)findViewById(R.id.cameraPreview);
                 		preview.addView(mPreview);
                 		flag = 1;
                 	}
@@ -145,7 +156,7 @@ public class MainActivity extends ActionBarActivity {
                         mCamera.setPreviewCallback(previewCb);
                         mCamera.startPreview();
                         previewing = true;
-                        mCamera.autoFocus(autoFocusCB);
+                        //mCamera.autoFocus(autoFocusCB);
                     }
                 }
             });
@@ -153,9 +164,29 @@ public class MainActivity extends ActionBarActivity {
         
 	}
 	
+	@Override
 	 public void onPause() {
 	        super.onPause();
 	        releaseCamera();
+	    }
+	
+	@Override
+	 public void onResume() {
+		super.onResume();
+	        if (flag == 1){
+	        	autoFocusHandler = new Handler();
+	        	mCamera = getCameraInstance();
+	        	preview.removeAllViews();
+	        	mPreview = new CameraPreview(this, mCamera, previewCb, autoFocusCB);
+	            preview = (FrameLayout)findViewById(R.id.cameraPreview);
+	        	preview.addView(mPreview);
+	        	mCamera.setPreviewCallback(previewCb);
+                mCamera.startPreview();
+                previewing = true;
+                //mCamera.autoFocus(autoFocusCB);
+                scanText.setVisibility(View.INVISIBLE);
+	        }
+	        
 	    }
 
 	    /** A safe way to get an instance of the Camera object. */
@@ -177,10 +208,12 @@ public class MainActivity extends ActionBarActivity {
 	        }
 	    }
 
-	    private Runnable doAutoFocus = new Runnable() {
+	    public Runnable doAutoFocus = new Runnable() {
 	            public void run() {
-	                if (previewing)
+	                if (previewing){
 	                    mCamera.autoFocus(autoFocusCB);
+	                }
+	                
 	            }
 	        };
 
@@ -248,9 +281,10 @@ public class MainActivity extends ActionBarActivity {
 	        };
 
 	    // Mimic continuous auto-focusing
-	    AutoFocusCallback autoFocusCB = new AutoFocusCallback() {
+	    Camera.AutoFocusCallback autoFocusCB = new Camera.AutoFocusCallback() {
 	            public void onAutoFocus(boolean success, Camera camera) {
 	                autoFocusHandler.postDelayed(doAutoFocus, 1000);
+	               
 	            }
 	        };
 
@@ -258,7 +292,7 @@ public class MainActivity extends ActionBarActivity {
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
-		return false;
+		return true;
 	}
 
 	@Override
@@ -267,7 +301,38 @@ public class MainActivity extends ActionBarActivity {
 		// automatically handle clicks on the Home/Up button, so long
 		// as you specify a parent activity in AndroidManifest.xml.
 		int id = item.getItemId();
-		if (id == R.id.action_settings) {
+		if (id == R.id.action_about) {
+			AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+ 			builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+ 			           public void onClick(DialogInterface dialog, int id) {
+ 			               dialog.dismiss();
+ 			           }
+ 			       });
+ 			builder.setTitle("About PyScan");
+ 			SpannableString s = new SpannableString("PyScan is the official QR Code scanner app for PyCon India 2014." + "\n\n@arindammanidas");
+ 	        s.setSpan(new TypefaceSpan(MainActivity.this, "Roboto-Light.ttf"), 0, s.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+ 	        //s.setSpan(new ForegroundColorSpan(Color.parseColor("#FF33e5b5")),  s.length()-30, s.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+ 	        s.setSpan(new ClickableSpan() {
+				
+				@Override
+				public void onClick(View arg0) {
+					// TODO Auto-generated method stub
+					Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://twitter.com/arindammanidas"));
+					startActivity(browserIntent);
+					
+				}
+			}, s.length()-15, s.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+ 			TextView msg = new TextView(MainActivity.this);
+ 			msg.setTextSize(18);
+ 			msg.setPadding(30, 10, 30, 10);
+ 			msg.setText(s);
+ 			msg.setMovementMethod(LinkMovementMethod.getInstance());
+ 	        builder.setView(msg);
+ 	        //builder.setIcon(R.drawable.ic_action_about_1);
+ 			AlertDialog dialogHelp = builder.create();
+ 			dialogHelp.setCancelable(false);
+ 			
+ 			dialogHelp.show();
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
